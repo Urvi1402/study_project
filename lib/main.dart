@@ -55,6 +55,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:study_project/utilities/colors.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +89,8 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   List<XFile> images = [];
 
+
+final DatabaseReference database = FirebaseDatabase.instance.reference().child('images');
   final ImagePicker picker = ImagePicker();
   final FirebaseStorage storage = FirebaseStorage.instance;
 
@@ -107,6 +110,8 @@ class _HomeState extends State<Home> {
         images.add(selectedImage);
       });
 
+        database.push().set(imageUrl);
+
       print('Image URL: $imageUrl');
     }
   }
@@ -116,6 +121,8 @@ class _HomeState extends State<Home> {
       images.removeAt(index);
     });
   }
+
+  
 
   Future<void> _showDialog() async {
     return showDialog<void>(
@@ -148,6 +155,8 @@ class _HomeState extends State<Home> {
       },
     );
   }
+
+  
 // class _HomeState extends State<Home> {
 //   List<XFile> images = [];
 
