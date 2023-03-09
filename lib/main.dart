@@ -88,9 +88,10 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   List<XFile> images = [];
+  List<String> imageUrls = [];
 
-
-final DatabaseReference database = FirebaseDatabase.instance.reference().child('images');
+  final DatabaseReference database =
+      FirebaseDatabase.instance.reference().child('images');
   final ImagePicker picker = ImagePicker();
   final FirebaseStorage storage = FirebaseStorage.instance;
 
@@ -107,22 +108,60 @@ final DatabaseReference database = FirebaseDatabase.instance.reference().child('
       final String imageUrl = await storageReference.getDownloadURL();
 
       setState(() {
-        images.add(selectedImage);
+        _getImagesUrls();
       });
 
-        database.push().set(imageUrl);
+      database.push().set(imageUrl);
 
       print('Image URL: $imageUrl');
     }
   }
 
-  Future<void> deleteImage(int index) async {
+  Future<void> _getImagesUrls() async {
+    ListResult result = await storage.ref().listAll();
+    List<Reference> allImages = result.items;
+    List<String> urls = await Future.wait(
+      allImages.map(
+        (Reference ref) async {
+          String url = await ref.getDownloadURL();
+          return url;
+        },
+      ),
+    );
     setState(() {
-      images.removeAt(index);
+      imageUrls = urls;
     });
   }
 
-  
+  Future<void> getImages() async {
+    ListResult result = await storage.ref().listAll();
+    List<Reference> allImages = result.items;
+    List<String> urls = await Future.wait(
+      allImages.map(
+        (Reference ref) async {
+          String url = await ref.getDownloadURL();
+          return url;
+        },
+      ),
+    );
+    setState(() {
+      imageUrls = urls;
+    });
+  }
+
+  Future<void> deleteImage(int index) async {
+    // Get the reference to the image's storage location using its URL
+    Reference storageReference =
+        FirebaseStorage.instance.refFromURL(imageUrls[index]);
+
+    // Delete the image from Firebase Storage
+    await storageReference.delete();
+
+    // Remove the image's URL from the list of image URLs
+    setState(() {
+      imageUrls.removeAt(index);
+    });
+  }
 
   Future<void> _showDialog() async {
     return showDialog<void>(
@@ -156,7 +195,13 @@ final DatabaseReference database = FirebaseDatabase.instance.reference().child('
     );
   }
 
-  
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _getImagesUrls();
+  }
+
 // class _HomeState extends State<Home> {
 //   List<XFile> images = [];
 
@@ -245,60 +290,95 @@ final DatabaseReference database = FirebaseDatabase.instance.reference().child('
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Upload Image'),
+        title: Text('My App'),
       ),
-      body: Center(
-        child: images.isEmpty
-            ? Text(
-                'No Images',
-                style: TextStyle(fontSize: 20),
-              )
-            : ListView.builder(
-                itemCount: images.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(images[index].path),
-                            fit: BoxFit.cover,
-                            width: MediaQuery.of(context).size.width,
-                            height: 200,
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () => deleteImage(index),
-                            child: Container(
-                              padding: EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.red,
-                              ),
-                              child: Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+      body: GridView.count(
+        crossAxisCount: 3,
+        children: List.generate(imageUrls.length, (index) {
+          return Center(
+            child: Stack(
+              children: <Widget>[
+                Image.network(imageUrls[index], fit: BoxFit.cover),
+                Positioned(
+                  right: 5,
+                  top: 5,
+                  child: GestureDetector(
+                    onTap: () {
+                      deleteImage(index);
+                    },
+                    child: Icon(Icons.delete, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showDialog();
-        },
+        onPressed: _showDialog,
         child: Icon(Icons.add),
       ),
     );
   }
 }
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text('Upload Image'),
+//       ),
+//       body: Center(
+//         child: images.isEmpty
+//             ? Text(
+//                 'No Images',
+//                 style: TextStyle(fontSize: 20),
+//               )
+//             : ListView.builder(
+//                 itemCount: images.length,
+//                 itemBuilder: (context, index) {
+//                   return Padding(
+//                     padding: const EdgeInsets.all(8.0),
+//                     child: Stack(
+//                       children: [
+//                         ClipRRect(
+//                           borderRadius: BorderRadius.circular(8),
+//                           child: Image.file(
+//                             File(images[index].path),
+//                             fit: BoxFit.cover,
+//                             width: MediaQuery.of(context).size.width,
+//                             height: 200,
+//                           ),
+//                         ),
+//                         Positioned(
+//                           top: 0,
+//                           right: 0,
+//                           child: GestureDetector(
+//                             onTap: () => deleteImage(index),
+//                             child: Container(
+//                               padding: EdgeInsets.all(4),
+//                               decoration: BoxDecoration(
+//                                 shape: BoxShape.circle,
+//                                 color: Colors.red,
+//                               ),
+//                               child: Icon(
+//                                 Icons.delete,
+//                                 color: Colors.white,
+//                               ),
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   );
+//                 },
+//               ),
+//       ),
+//       floatingActionButton: FloatingActionButton(
+//         onPressed: () {
+//           _showDialog();
+//         },
+//         child: Icon(Icons.add),
+//       ),
+//     );
+//   }
+// }
